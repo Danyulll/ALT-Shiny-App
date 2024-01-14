@@ -1,8 +1,7 @@
 library(CurricularAnalytics)
 library(visNetwork)
 
-#' @export
-plot_graph <- function(selectedOptions){
+plot_graph <- function(selectedOptions, path){
 
   if (length(selectedOptions) %in% 0) { # Currently if this condition just checks 0 when you uncheck all boxes it will still display 1 node despite the checkboxes vector being 0. This is because of how selectedOptions is updated, its length stays at 1. Need to learn how to force update SelecredOptions so that it goes to length 0 when all checkboxes are unchecked.
     nodes <- data.frame(id = numeric(0), label = character(0))
@@ -18,7 +17,7 @@ plot_graph <- function(selectedOptions){
 
     df <-
       utils::read.csv(
-        "C:\\Users\\danie\\Desktop\\School\\ALT-Shiny-App\\Legacy\\data\\Example-Curriculum.csv" #TODO figure out how Rhino adds datasets and do it instead of hardpath
+        path
       )
 
     edge_list <- data.frame(from = NA, to = NA)
@@ -61,3 +60,12 @@ plot_graph <- function(selectedOptions){
 
   }
 }
+
+getCourses <- function(year, path) {
+  df <-
+    utils::read.csv(path)
+
+  grep(paste("\\b[", year, "]\\d{2}\\b"),  df$label, value = TRUE)
+}
+
+

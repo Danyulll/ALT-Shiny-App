@@ -42,52 +42,43 @@ server <- function(input, output, session){
     valuesYear3 <- reactiveValues(selected = character(0))
     valuesYear4 <- reactiveValues(selected = character(0))
 
-    # selectedOptions <- reactive({
-      # c(
-      #   valuesYear1$selected,
-      #   valuesYear2$selected,
-      #   valuesYear3$selected,
-      #   valuesYear4$selected
-      # )
-    #
-    # })
-
     output$network <- renderVisNetwork({
       plot_graph(      c(
         valuesYear1$selected,
         valuesYear2$selected,
         valuesYear3$selected,
         valuesYear4$selected
-      ))
+      ),"..\\data\\Example-Curriculum.csv")
     })
 
     output$coursestaken <- renderUI({
       if (input$dropdown == "Year 1") {
+        cat(getwd())
         checkboxGroupInput(
           "checkboxes1",
           "Choose Options",
-          choices = c("DATA 101", "MATH 100", "MATH 101"),
+          choices = getCourses(1,"..\\data\\Example-Curriculum.csv"),
           selected = isolate(valuesYear1$selected)
         )
       } else if (input$dropdown == "Year 2") {
         checkboxGroupInput(
           "checkboxes2",
           "Choose Options",
-          choices = c("STAT 230", "MATH 200", "COSC 221"),
+          choices = getCourses(2,"..\\data\\Example-Curriculum.csv"),
           selected = isolate(valuesYear2$selected)
         )
       } else if (input$dropdown == "Year 3") {
         checkboxGroupInput(
           "checkboxes3",
           "Choose Options",
-          choices = c("DATA 301", "DATA 311", "STAT 303"),
+          choices = getCourses(3,"..\\data\\Example-Curriculum.csv"),
           selected = isolate(valuesYear3$selected)
         )
       } else if (input$dropdown == "Year 4") {
         checkboxGroupInput(
           "checkboxes4",
           "Choose Options",
-          choices = c("DATA 405", "DATA 407", "DATA 410"),
+          choices = getCourses(4,"..\\data\\Example-Curriculum.csv"),
           selected = isolate(valuesYear4$selected)
         )
       }
