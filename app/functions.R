@@ -61,11 +61,13 @@ plot_graph <- function(selectedOptions, path){
   }
 }
 
-getCourses <- function(year, path) {
+getCourses <- function(year, path, subject) {
   df <-
     utils::read.csv(path)
 
-  grep(paste("\\b[", year, "]\\d{2}\\b"),  df$label, value = TRUE)
+  res <- grep(paste("\\b[", year, "]\\d{2}\\b"),  df$label, value = TRUE)
+  res <- res[substr(res, 1, 4) == subject]
+  res
 }
 
 

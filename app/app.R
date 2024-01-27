@@ -11,9 +11,13 @@ ui <- fluidPage(titlePanel("Data Science Curriculum Explorer"),
                     wellPanel(
                       h4("Courses Information"),
                       selectInput(
-                        "dropdown",
-                        "Select Option",
+                        "dropdownYear",
+                        "Select Year",
                         choices = c("Year 1", "Year 2", "Year 3", "Year 4")
+                      ), selectInput(
+                        "dropdownCourseCode",
+                        "Select Code",
+                        choices = c("MATH", "DATA", "BIOL", "CHEM","EESC","PHYS","COSC","ENGL","APSC","STAT","PSYO","PHIL")
                       ),
                       uiOutput("coursestaken"),
                       actionButton("resetButton", "Reset"),
@@ -70,32 +74,32 @@ server <- function(input, output, session) {
   })
 
   output$coursestaken <- renderUI({
-    if (input$dropdown == "Year 1") {
+    if (input$dropdownYear == "Year 1") {
       checkboxGroupInput(
         "checkboxes1",
         "Choose Options",
-        choices = getCourses(1, "..\\data\\Example-Curriculum.csv"),
+        choices = getCourses(1, "..\\data\\Example-Curriculum.csv",input$dropdownCourseCode),
         selected = isolate(valuesYear1$selected)
       )
-    } else if (input$dropdown == "Year 2") {
+    } else if (input$dropdownYear == "Year 2") {
       checkboxGroupInput(
         "checkboxes2",
         "Choose Options",
-        choices = getCourses(2, "..\\data\\Example-Curriculum.csv"),
+        choices = getCourses(2, "..\\data\\Example-Curriculum.csv",input$dropdownCourseCode),
         selected = isolate(valuesYear2$selected)
       )
-    } else if (input$dropdown == "Year 3") {
+    } else if (input$dropdownYeardropdown == "Year 3") {
       checkboxGroupInput(
         "checkboxes3",
         "Choose Options",
-        choices = getCourses(3, "..\\data\\Example-Curriculum.csv"),
+        choices = getCourses(3, "..\\data\\Example-Curriculum.csv",input$dropdownCourseCode),
         selected = isolate(valuesYear3$selected)
       )
-    } else if (input$dropdown == "Year 4") {
+    } else if (input$dropdownYear == "Year 4") {
       checkboxGroupInput(
         "checkboxes4",
         "Choose Options",
-        choices = getCourses(4, "..\\data\\Example-Curriculum.csv"),
+        choices = getCourses(4, "..\\data\\Example-Curriculum.csv",input$dropdownCourseCode),
         selected = isolate(valuesYear4$selected)
       )
     }
@@ -103,7 +107,7 @@ server <- function(input, output, session) {
 
   observeEvent(input$checkboxes1,
                {
-                 valuesYear1$selected <- input$checkboxes1
+                 c(valuesYear1$selected,input$checkboxes1) |> unique() -> valuesYear1$selected
                  test <- c(
                    isolate(valuesYear1$selected),
                    isolate(valuesYear2$selected),
@@ -121,7 +125,7 @@ server <- function(input, output, session) {
                })
 
   observeEvent(input$checkboxes2, {
-    valuesYear2$selected <- input$checkboxes2
+    c(input$checkboxes2,valuesYear2$selected) |> unique() -> valuesYear2$selected
     test <- c(
       isolate(valuesYear1$selected),
       isolate(valuesYear2$selected),
@@ -138,7 +142,7 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$checkboxes3, {
-    valuesYear3$selected <- input$checkboxes3
+    c(input$checkboxes3,valuesYear3$selected) |> unique() -> valuesYear3$selected
     test <- c(
       isolate(valuesYear1$selected),
       isolate(valuesYear2$selected),
@@ -155,7 +159,7 @@ server <- function(input, output, session) {
   })
 
   observeEvent(input$checkboxes4, {
-    valuesYear4$selected <- input$checkboxes4
+    c(input$checkboxes4,valuesYear4$selected) |> unique() -> valuesYear4$selected
     test <- c(
       isolate(valuesYear1$selected),
       isolate(valuesYear2$selected),
