@@ -88,7 +88,7 @@ server <- function(input, output, session) {
         choices = getCourses(2, "..\\data\\Example-Curriculum.csv",input$dropdownCourseCode),
         selected = isolate(valuesYear2$selected)
       )
-    } else if (input$dropdownYeardropdown == "Year 3") {
+    } else if (input$dropdownYear == "Year 3") {
       checkboxGroupInput(
         "checkboxes3",
         "Choose Options",

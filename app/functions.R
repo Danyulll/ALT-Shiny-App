@@ -44,19 +44,24 @@ plot_graph <- function(selectedOptions, path){
     node_list$term <- terms
 
     C <- curriculum_graph_from_list(node_list, edge_list)
-    visNetwork::visNetwork(
-      C$node_list,
-      C$edge_list,
-      submain = paste(
-        "Total Structural Complexity:",
-        C$sc_total,
-        "Total Blocking Factor:",
-        C$bf_total,
-        "Total Delay Factor:",
-        C$df_total
-      )
-    ) |>
-      visNetwork::visEdges(arrows = "to")
+    plot.curriculum_graph(C)
+    # visNetwork::visNetwork(
+    #   C$node_list,
+    #   C$edge_list,
+    #   submain = paste(
+    #     "Total Structural Complexity:",
+    #     C$sc_total,
+    #     "Total Blocking Factor:",
+    #     C$bf_total,
+    #     "Total Delay Factor:",
+    #     C$df_total
+    #   )
+    # ) |>
+    #   visNetwork::visEdges(arrows = "to") |>
+    #   visNetwork::visEvents(
+    #     selectNode = "function(properties) {
+    #   alert(' sc: ' + this.body.data.nodes.get(properties.nodes[0]).sc + ' cf: ' + this.body.data.nodes.get(properties.nodes[0]).cf + ' bf: ' + this.body.data.nodes.get(properties.nodes[0]).bf + ' df: ' + this.body.data.nodes.get(properties.nodes[0]).df);}"
+    #   )
 
   }
 }
@@ -70,4 +75,28 @@ getCourses <- function(year, path, subject) {
   res
 }
 
+plot.curriculum_graph <- function(curriculum_graph, width = "100%", height = 500) {
+  curriculum_graph$node_list <-
+    curriculum_graph$node_list[order(curriculum_graph$node_list$term),]
+  # coords <- generate_coords(curriculum_graph)
+  visNetwork::visNetwork(
+    curriculum_graph$node_list,
+    curriculum_graph$edge_list,
+    width = width,
+    height = height,
+    submain = paste(
+      "Total Structural Complexity:",
+      curriculum_graph$sc_total,
+      "Total Blocking Factor:",
+      curriculum_graph$bf_total,
+      "Total Delay Factor:",
+      curriculum_graph$df_total
+    )
+  ) %>%
+    visNetwork::visEdges(arrows = "to") |>
+    visNetwork::visEvents(
+      selectNode = "function(properties) {
+      alert(' sc: ' + this.body.data.nodes.get(properties.nodes[0]).sc + ' cf: ' + this.body.data.nodes.get(properties.nodes[0]).cf + ' bf: ' + this.body.data.nodes.get(properties.nodes[0]).bf + ' df: ' + this.body.data.nodes.get(properties.nodes[0]).df);}"
+    )
+}
 
