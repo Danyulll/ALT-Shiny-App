@@ -32,12 +32,20 @@ ui <- fluidPage(titlePanel("Data Science Curriculum Explorer"),
                          )),
                   column(4,
                          wellPanel(
-                           checkboxGroupInput(
-                             "checkboxes",
-                             "Select Nodes",
-                             choices = c("Topics", "Predicted Grade", "Course Similarity")
+                           tabsetPanel(
+                             id = "course_recommendations",
+                             tabPanel("Topics",
+                                      # Add content for Topics here
+                             ),
+                             tabPanel("Predicted Grade",
+                                      # Add content for Predicted Grade here
+                             ),
+                             tabPanel("Course Similarity",
+                                      textAreaInput("text_input", "Enter Text", value = "", rows = 1),
+                                      textOutput("display_text_course_sim")
+                             )
                            ),
-                           verbatimTextOutput("selectedNodes")
+
                          ))
                 ))
 
@@ -197,6 +205,11 @@ server <- function(input, output, session) {
     valuesYear3$selected <- character(0)
     valuesYear4$selected <- character(0)
 
+  })
+
+
+  output$display_text_course_sim <- renderText({
+    input$text_input
   })
 }
 
