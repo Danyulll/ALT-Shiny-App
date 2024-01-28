@@ -1,6 +1,9 @@
 library(CurricularAnalytics)
 library(visNetwork)
-
+library(reticulate)
+library(stringr)
+library(dplyr)
+library(readr)
 
 plot_graph <- function(selectedOptions, path){
 
@@ -104,59 +107,66 @@ plot.curriculum_graph <- function(curriculum_graph, width = "100%", height = 500
 
 ################
 # Testing area for reticulate
-library(reticulate)
-library(stringr)
-library(dplyr)
-library(readr)
-nltk_corpus <- import("nltk.corpus")
-stopwords <- nltk_corpus$stopwords
 
-nltk_tokenize <- import("nltk.tokenize")
-RegexpTokenizer <- nltk_tokenize$RegexpTokenizer
-
-nltk_stem <- import("nltk.stem")
-PorterStemmer <- nltk_stem$PorterStemmer
-
-nltk <- import("nltk")
-FreqDist <- nltk$FreqDist
-bigrams <- nltk$bigrams
-
-collections <- import("collections")
-Counter <- collections$Counter
-
-sklearn_decomposition <- import("sklearn.decomposition")
-TruncatedSVD <- sklearn_decomposition$TruncatedSVD
-
-sklearn_feature_extraction_text <- import("sklearn.feature_extraction.text")
-TfidfTransformer <- sklearn_feature_extraction_text$TfidfTransformer
-CountVectorizer <- sklearn_feature_extraction_text$CountVectorizer
-
-sklearn_preprocessing <- import("sklearn.preprocessing")
-Normalizer <- sklearn_preprocessing$Normalizer
-
-np <- import("numpy")
-pd <- import("pandas")
 
 # Define the nltk_pipeline function in R
 nltk_pipeline <- function(input_string) {
   # Create tokenizer and stemmer instances
+  np <- import("numpy")
+  pd <- import("pandas")
+
+  nltk_corpus <- import("nltk.corpus")
+  stopwords <- nltk_corpus$stopwords
+
+  nltk_tokenize <- import("nltk.tokenize")
+  RegexpTokenizer <- nltk_tokenize$RegexpTokenizer
+
+  nltk_stem <- import("nltk.stem")
+  PorterStemmer <- nltk_stem$PorterStemmer
+
+  nltk <- import("nltk")
+  FreqDist <- nltk$FreqDist
+  bigrams <- nltk$bigrams
+
+  collections <- import("collections")
+  Counter <- collections$Counter
+
+  sklearn_decomposition <- import("sklearn.decomposition")
+  TruncatedSVD <- sklearn_decomposition$TruncatedSVD
+
+  sklearn_feature_extraction_text <- import("sklearn.feature_extraction.text")
+  TfidfTransformer <- sklearn_feature_extraction_text$TfidfTransformer
+  CountVectorizer <- sklearn_feature_extraction_text$CountVectorizer
+
+  sklearn_preprocessing <- import("sklearn.preprocessing")
+  Normalizer <- sklearn_preprocessing$Normalizer
+
   tokenizer <- RegexpTokenizer('\\w+')
+  nltk_stem <- import("nltk.stem")
+  PorterStemmer <- nltk_stem$PorterStemmer
   stemmer <- PorterStemmer()
+
+  # cat("stuff loaded again")
 
   # Tokenize input string and remove punctuation
   tokens <- tokenizer$tokenize(input_string)
+  # cat("tokenize")
   # Remove tokens containing numbers
   tokens <- Filter(function(token) !grepl('\\d', token), tokens)
-  # Convert tokens to lowercase and remove stopwords
+  # cat("filter tokens")
+  #Convert tokens to lowercase and remove stopwords
   stop_words_set <- stopwords$words("english")
   custom_stop_words_set <- unique(c("ii", "i", "e", "g", "official", "calendar", "first", "year", "second", "third", "fourth", "fall", "spring", "summer", "winter", "credit", "granted"))
   stop_words_combined <- union(stop_words_set, custom_stop_words_set)
   filtered_tokens <- Filter(function(token) !(tolower(token) %in% stop_words_combined), tokens)
-  # Perform stemming on filtered tokens
+  # cat("filter out stop words")
+    # Perform stemming on filtered tokens
   stemmed_tokens <- sapply(filtered_tokens, function(token) stemmer$stem(token))
+  # cat("stem")
   bigram_freq <- FreqDist(bigrams(stemmed_tokens))
   names(which(unlist(bigram_freq) >= 2)) |> str_extract_all( "\\b\\w+\\b") -> frequent_bigrams
   frequent_bigrams <- paste(unlist(frequent_bigrams),collapse = "_")
+  # cat("bigram stuff")
   final_tokens <- c(stemmed_tokens, frequent_bigrams[[1]])
   token_counts <- Counter(final_tokens)
   filtered_final_tokens <- Filter(function(token) token_counts[[token]] > 0, final_tokens)
@@ -164,12 +174,31 @@ nltk_pipeline <- function(input_string) {
 }
 
 # Define the lsaDocSim function in R
-lsaDocSim <- function(query_course, year) {
-  df <- read_csv("./data/UBCO_Course_Calendar.csv", locale = locale(encoding = "ISO-8859-1")) %>%
-    filter(!is.na(`Course Description`))
-
+lsaDocSim <- function(query_course, year,df,
+                      np,
+                      pd,
+                      nltk_corpus,
+                      stopwords,
+                      nltk_tokenize,
+                      RegexpTokenizer ,
+                      nltk_stem,
+                      PorterStemmer,
+                      nltk,
+                      FreqDist,
+                      bigrams,
+                      collections,
+                      Counter,
+                      sklearn_decomposition,
+                      TruncatedSVD,
+                      sklearn_feature_extraction_text,
+                      TfidfTransformer,
+                      CountVectorizer,
+                      sklearn_preprocessing,
+                      Normalizer) {
   # Clean data
   clean_text <- sapply(df$`Course Description`, nltk_pipeline)
+
+  cat("Data cleaned")
 
   vectorizer <- CountVectorizer(min_df=1L)
   dtm <- vectorizer$fit_transform(clean_text)
@@ -191,6 +220,8 @@ lsaDocSim <- function(query_course, year) {
 
   mat <- np$concatenate(list(normalized_matrix, doc_embeddings), axis=1L)
   doc_sim <- mat %*% t(mat)
+
+  cat("doc_sim made\n")
 
   df$ID <- seq_len(nrow(df))
   # map <- df[,c('Course Code','ID')]$set_index('Course Code')$to_dict(orient='dict')['ID']
@@ -223,7 +254,59 @@ lsaDocSim <- function(query_course, year) {
     df_out <- df_out[indices,]
   }
 
-  return(df_out[1:3, ])
+  cat("Returning result\n")
+  return(df_out[2:4, ])
 }
 
+create_python_env <- function(env_name="shiny_app") {
+  # Load reticulate library
+  library(reticulate)
+
+  # Create a new virtual environment
+  virtualenv_create(env_name)
+
+  # Install necessary Python packages in the created environment
+  packages_to_install <- c("numpy", "pandas", "nltk", "scikit-learn")
+  py_install(packages=packages_to_install, envname=env_name)
+
+  # Download additional NLTK data (stopwords, etc.)
+  py_run_string("import nltk; nltk.download('stopwords'); nltk.download('punkt')")
+
+  # Activate the environment
+  use_virtualenv(env_name, required = TRUE)
+
+  cat("Python environment", env_name, "is set up and ready to use.")
+}
+
+use_or_create_env <- function(env_name="shiny_app") {
+  tryCatch(
+    {
+      # Try to use the virtual environment
+      reticulate::use_virtualenv(env_name, required = TRUE)
+      cat("Successfully activated the Python environment:", env_name, "\n")
+    },
+    error = function(e) {
+      if(is_python_installed()){
+        cat("Installed already")
+      }else{
+        reticulate::install_python()
+      }
+      # If an error occurs, create and activate the environment
+      cat("Error in activating environment. Creating a new environment:", env_name, "\n")
+      create_python_env(env_name)
+      reticulate::use_virtualenv(env_name, required = TRUE)
+      cat("Successfully created and activated the Python environment:", env_name, "\n")
+    }
+  )
+}
+
+is_python_installed <- function() {
+  py_config <- tryCatch({
+    py_discover_config()
+  }, error = function(e) {
+    return(NULL)
+  })
+
+  return(!is.null(py_config$python))
+}
 
