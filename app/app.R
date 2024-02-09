@@ -84,8 +84,7 @@ server <- function(input, output, session) {
           valuesYear2$selected,
           valuesYear3$selected,
           valuesYear4$selected
-        ),
-        "..\\data\\Example-Curriculum.csv"
+        )
       )
     }
 
@@ -297,7 +296,7 @@ server <- function(input, output, session) {
     if(!is.null(data)){
       tagList(
         tableOutput("table_view"),
-        checkboxInput("checkbox1rec", paste(data$Course.Name[1],data$Course.Code[1]), value = TRUE),
+        checkboxInput("checkbox1rec", paste(data$Course.Name[1],data$Course.Code[1]), value = FALSE),
         checkboxInput("checkbox2rec", paste(data$Course.Name[2],data$Course.Code[2]), value = FALSE),
         checkboxInput("checkbox3rec", paste(data$Course.Name[3],data$Course.Code[3]), value = FALSE)
       )
@@ -307,6 +306,53 @@ server <- function(input, output, session) {
   output$table_view <- renderTable({
     reactive_data()
   })
+
+  observeEvent(input$checkbox1rec, {
+    data <- reactive_data()
+    course_id <- paste(data$Course.Name[1], data$Course.Code[1])
+
+    if (input$checkbox1rec) {
+      # If the checkbox is checked, add the course
+      if (!(course_id %in% valuesYear1$selected)) {
+        valuesYear1$selected <- unique(c(valuesYear1$selected, course_id))
+      }
+    } else {
+      # If the checkbox is unchecked, remove the course
+      valuesYear1$selected <- setdiff(valuesYear1$selected, course_id)
+    }
+  })
+
+  observeEvent(input$checkbox2rec, {
+    data <- reactive_data()
+    course_id <- paste(data$Course.Name[2], data$Course.Code[2])
+
+    if (input$checkbox2rec) {
+      # If the checkbox is checked, add the course
+      if (!(course_id %in% valuesYear1$selected)) {
+        valuesYear1$selected <- unique(c(valuesYear1$selected, course_id))
+      }
+    } else {
+      # If the checkbox is unchecked, remove the course
+      valuesYear1$selected <- setdiff(valuesYear1$selected, course_id)
+    }
+  })
+
+  observeEvent(input$checkbox3rec, {
+    data <- reactive_data()
+    course_id <- paste(data$Course.Name[3], data$Course.Code[3])
+
+    if (input$checkbox3rec) {
+      # If the checkbox is checked, add the course
+      if (!(course_id %in% valuesYear1$selected)) {
+        valuesYear1$selected <- unique(c(valuesYear1$selected, course_id))
+      }
+    } else {
+      # If the checkbox is unchecked, remove the course
+      valuesYear1$selected <- setdiff(valuesYear1$selected, course_id)
+    }
+  })
+
+
 }
 
 

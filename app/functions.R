@@ -5,24 +5,24 @@ library(stringr)
 library(dplyr)
 library(readr)
 
-plot_graph <- function(selectedOptions, path){
+plot_graph <- function(selectedOptions){
 
   if (length(selectedOptions) %in% 0) { # Currently if this condition just checks 0 when you uncheck all boxes it will still display 1 node despite the checkboxes vector being 0. This is because of how selectedOptions is updated, its length stays at 1. Need to learn how to force update SelecredOptions so that it goes to length 0 when all checkboxes are unchecked.
     nodes <- data.frame(id = numeric(0), label = character(0))
     edges <- data.frame(from = numeric(0), to = numeric(0))
     visNetwork(nodes, edges)
   }else{
-
-    node_list <-
-      data.frame(
-        "id" = 1:length(selectedOptions) ,
-        "label" = selectedOptions
-      )
-
     df <-
       utils::read.csv(
         path
       )
+    node_list <-
+      data.frame(
+        "id" = df$id[df$label %in% selectedOptions],
+        "label" = selectedOptions
+      )
+    path <- "C:\\Users\\danie\\Desktop\\School\\ALT-Shiny-App\\data\\Example-Curriculum.csv"
+
 
     edge_list <- data.frame(from = NA, to = NA)
     terms <- c()
@@ -47,25 +47,50 @@ plot_graph <- function(selectedOptions, path){
     edge_list <- stats::na.omit(edge_list)
     node_list$term <- terms
 
-    C <- curriculum_graph_from_list(node_list, edge_list)
-    plot.curriculum_graph(C)
-    # visNetwork::visNetwork(
-    #   C$node_list,
-    #   C$edge_list,
-    #   submain = paste(
-    #     "Total Structural Complexity:",
-    #     C$sc_total,
-    #     "Total Blocking Factor:",
-    #     C$bf_total,
-    #     "Total Delay Factor:",
-    #     C$df_total
-    #   )
-    # ) |>
-    #   visNetwork::visEdges(arrows = "to") |>
-    #   visNetwork::visEvents(
-    #     selectNode = "function(properties) {
-    #   alert(' sc: ' + this.body.data.nodes.get(properties.nodes[0]).sc + ' cf: ' + this.body.data.nodes.get(properties.nodes[0]).cf + ' bf: ' + this.body.data.nodes.get(properties.nodes[0]).bf + ' df: ' + this.body.data.nodes.get(properties.nodes[0]).df);}"
-    #   )
+    #TODO need to fix CurricularAnalytics package
+    curriculum_graph_from_list(node_list,edge_list)
+
+
+
+    obj <- list()
+    class(obj) <- "curriculum_graph"
+
+
+    bf_df <- blocking_factor(node_list, edge_list)
+    bf <- bf_df$bynode
+
+    node_list <- dplyr::left_join(node_list, bf, by = c("id" = "id"))
+
+    df_df <- delay_factor(node_list,edge_list)
+    df <- df_df$bynode
+
+    node_list <- dplyr::left_join(node_list, df, by = c("id" = "id"))
+
+    cf <- centrality_factor(node_list, edge_list)
+
+    node_list <- dplyr::left_join(node_list, cf, by = c("id" = "id"))
+
+    sc_df <- structural_complexity(node_list, edge_list)
+    sc <- sc_df$bynode
+
+    node_list <- dplyr::left_join(node_list, sc, by = c("id" = "id"))
+
+    obj$node_list <- node_list
+    obj$edge_list <- edge_list
+    obj$network <- igraph::graph_from_data_frame(d = edge_list,
+                                                 vertices = node_list,
+                                                 directed = TRUE)
+
+    obj$sc_total <- sc_df$total
+
+    obj$bf_total <- bf_df$total
+
+    obj$df_total <- df_df$total
+
+
+
+    plot.curriculum_graph(obj)
+
 
   }
 }

@@ -1,0 +1,39 @@
+---
+title: "test"
+format: html
+editor: visual
+---
+
+```{r}
+library(CurricularAnalytics)
+
+selectedOptions <- c("CHEM 121","CHEM 111")
+
+
+    
+c <- curriculum_graph_from_csv("C:\\Users\\danie\\Desktop\\School\\ALT-Shiny-App\\data\\Example-Curriculum.csv")
+node_list <- c$node_list
+node_list <- node_list[node_list$label %in% selectedOptions,]
+edge_list <- c$edge_list
+edge_list <- c$edge_list[unique(c(which(edge_list$from %in% node_list$id)  ,which(edge_list$to %in% node_list$id))),]
+edge_list$from <- as.numeric(edge_list$from)
+edge_list$to <- as.numeric(edge_list$to)
+rownames(edge_list) <- NULL
+c <-  curriculum_graph_from_list(node_list = node_list,edge_list = edge_list)
+plot.curriculum_graph(c)
+```
+
+```{r}
+edge_list2 <- data.frame(from = c(1, 3), to = c(3, 4))
+# courses in node list must be placed sequentially in term order to be properly displayed
+node_list <-
+data.frame(
+ id = 1:4,
+ label = c("MATH 100", "DATA 101", "MATH 101", "MATH 221"),
+ term = c(1, 1, 2, 2)
+)
+C <- curriculum_graph_from_list(node_list,edge_list)
+plot(C)
+```
+
+
