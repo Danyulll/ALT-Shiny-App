@@ -229,65 +229,8 @@ server <- function(input, output, session) {
 
 
       cat("Staring doc sim\n")
-      np <- import("numpy")
-      pd <- import("pandas")
+      lsaDocSim(ti,sg,df)
 
-      nltk_corpus <- import("nltk.corpus")
-      stopwords <- nltk_corpus$stopwords
-
-      nltk_tokenize <- import("nltk.tokenize")
-      RegexpTokenizer <- nltk_tokenize$RegexpTokenizer
-
-      nltk_stem <- import("nltk.stem")
-      PorterStemmer <- nltk_stem$PorterStemmer
-
-      nltk <- import("nltk")
-      FreqDist <- nltk$FreqDist
-      bigrams <- nltk$bigrams
-
-      collections <- import("collections")
-      Counter <- collections$Counter
-
-      sklearn_decomposition <- import("sklearn.decomposition")
-      TruncatedSVD <- sklearn_decomposition$TruncatedSVD
-
-      sklearn_feature_extraction_text <- import("sklearn.feature_extraction.text")
-      TfidfTransformer <- sklearn_feature_extraction_text$TfidfTransformer
-      CountVectorizer <- sklearn_feature_extraction_text$CountVectorizer
-
-      sklearn_preprocessing <- import("sklearn.preprocessing")
-      Normalizer <- sklearn_preprocessing$Normalizer
-
-      cat("Packages loaded\n")
-
-
-      # You may think this looks bad, and I'd agree but I challenge you to get reticulate to work when these imports are in functions.R
-      # TODO seriosuly tho fix this
-      lsaDocSim(
-        ti,
-        ifelse(is.na(as.numeric(sg)), 0, as.numeric(sg)),
-        df,
-        np,
-        pd,
-        nltk_corpus,
-        stopwords,
-        nltk_tokenize,
-        RegexpTokenizer ,
-        nltk_stem,
-        PorterStemmer,
-        nltk,
-        FreqDist,
-        bigrams,
-        collections,
-        Counter,
-        sklearn_decomposition,
-        TruncatedSVD,
-        sklearn_feature_extraction_text,
-        TfidfTransformer,
-        CountVectorizer,
-        sklearn_preprocessing,
-        Normalizer
-      )
     }
   }, ignoreNULL = FALSE)
 

@@ -180,37 +180,22 @@ nltk_pipeline <- function(input_string) {
   stemmed_tokens <- sapply(filtered_tokens, function(token) stemmer$stem(token))
   # cat("stem")
   bigram_freq <- FreqDist(bigrams(stemmed_tokens))
-  names(which(unlist(bigram_freq) >= 2)) |> str_extract_all( "\\b\\w+\\b") -> frequent_bigrams
-  frequent_bigrams <- paste(unlist(frequent_bigrams),collapse = "_")
+
+  # I had to remove the bigram functionality for the topic model due to werid Python to R conversions that crash the app. It would be nice to fix this.
+  # names(which(unlist(bigram_freq) >= 2)) |> str_extract_all( "\\b\\w+\\b") -> frequent_bigrams
+  # frequent_bigrams <- paste(unlist(frequent_bigrams),collapse = "_")
   # cat("bigram stuff")
-  final_tokens <- c(stemmed_tokens, frequent_bigrams[[1]])
+
+  final_tokens <- c(stemmed_tokens) #, frequent_bigrams[[1]]
   token_counts <- Counter(final_tokens)
   filtered_final_tokens <- Filter(function(token) token_counts[[token]] > 0, final_tokens)
   return(paste(filtered_final_tokens, collapse=' '))
 }
 
 # Define the lsaDocSim function in R
-lsaDocSim <- function(query_course, year,df,
-                      np,
-                      pd,
-                      nltk_corpus,
-                      stopwords,
-                      nltk_tokenize,
-                      RegexpTokenizer ,
-                      nltk_stem,
-                      PorterStemmer,
-                      nltk,
-                      FreqDist,
-                      bigrams,
-                      collections,
-                      Counter,
-                      sklearn_decomposition,
-                      TruncatedSVD,
-                      sklearn_feature_extraction_text,
-                      TfidfTransformer,
-                      CountVectorizer,
-                      sklearn_preprocessing,
-                      Normalizer) {
+lsaDocSim <- function(query_course, year,df) {
+
+
   # Clean data
   clean_text <- sapply(df$`Course Description`, nltk_pipeline)
 
