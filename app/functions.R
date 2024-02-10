@@ -16,7 +16,7 @@ plot_graph <- function(selectedOptions) {
     nodes <- data.frame(id = numeric(0), label = character(0))
     edges <- data.frame(from = numeric(0), to = numeric(0))
     visNetwork(nodes, edges)
-  } else if (length(selectedOptions) == 1) {
+  } else if (length(selectedOptions) %in% 1) {
     node_list <-
       data.frame(id = 1,
                  label = df$label,
@@ -195,11 +195,44 @@ nltk_pipeline <- function(input_string) {
 # Define the lsaDocSim function in R
 lsaDocSim <- function(query_course, year,df) {
 
-
   # Clean data
   clean_text <- sapply(df$`Course Description`, nltk_pipeline)
 
   cat("Data cleaned")
+
+  np <- import("numpy")
+  pd <- import("pandas")
+
+  nltk_corpus <- import("nltk.corpus")
+  stopwords <- nltk_corpus$stopwords
+
+  nltk_tokenize <- import("nltk.tokenize")
+  RegexpTokenizer <- nltk_tokenize$RegexpTokenizer
+
+  nltk_stem <- import("nltk.stem")
+  PorterStemmer <- nltk_stem$PorterStemmer
+
+  nltk <- import("nltk")
+  FreqDist <- nltk$FreqDist
+  bigrams <- nltk$bigrams
+
+  collections <- import("collections")
+  Counter <- collections$Counter
+
+  sklearn_decomposition <- import("sklearn.decomposition")
+  TruncatedSVD <- sklearn_decomposition$TruncatedSVD
+
+  sklearn_feature_extraction_text <- import("sklearn.feature_extraction.text")
+  TfidfTransformer <- sklearn_feature_extraction_text$TfidfTransformer
+  CountVectorizer <- sklearn_feature_extraction_text$CountVectorizer
+
+  sklearn_preprocessing <- import("sklearn.preprocessing")
+  Normalizer <- sklearn_preprocessing$Normalizer
+
+  tokenizer <- RegexpTokenizer('\\w+')
+  nltk_stem <- import("nltk.stem")
+  PorterStemmer <- nltk_stem$PorterStemmer
+  stemmer <- PorterStemmer()
 
   vectorizer <- CountVectorizer(min_df=1L)
   dtm <- vectorizer$fit_transform(clean_text)
