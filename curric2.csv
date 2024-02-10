@@ -1,0 +1,3 @@
+"id","label","term","requisites"
+12,"CHEM 111",1,""
+13,"CHEM 121",1,"12"

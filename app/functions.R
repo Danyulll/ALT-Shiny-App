@@ -4,30 +4,49 @@ library(reticulate)
 library(stringr)
 library(dplyr)
 library(readr)
+library(igraph)
 
-plot_graph <- function(selectedOptions){
+plot_graph <- function(selectedOptions) {
+  df <-
+    utils::read.csv(path)
 
-  if (length(selectedOptions) %in% 0) { # Currently if this condition just checks 0 when you uncheck all boxes it will still display 1 node despite the checkboxes vector being 0. This is because of how selectedOptions is updated, its length stays at 1. Need to learn how to force update SelecredOptions so that it goes to length 0 when all checkboxes are unchecked.
+  df <- df[which(df$label %in% selectedOptions), ]
+  if (length(selectedOptions) %in% 0) {
+    # Currently if this condition just checks 0 when you uncheck all boxes it will still display 1 node despite the checkboxes vector being 0. This is because of how selectedOptions is updated, its length stays at 1. Need to learn how to force update SelecredOptions so that it goes to length 0 when all checkboxes are unchecked.
     nodes <- data.frame(id = numeric(0), label = character(0))
     edges <- data.frame(from = numeric(0), to = numeric(0))
     visNetwork(nodes, edges)
-  }else{
-    df <-
-      utils::read.csv(
-        path
-      )
+  } else if (length(selectedOptions) == 1) {
     node_list <-
-      data.frame(
-        "id" = df$id[df$label %in% selectedOptions],
-        "label" = selectedOptions
-      )
-    path <- "C:\\Users\\danie\\Desktop\\School\\ALT-Shiny-App\\data\\Example-Curriculum.csv"
+      data.frame(id = 1,
+                 label = df$label,
+                 term = df$term)
+    edge_list <- data.frame(from = integer(), to = integer())
+    c <-
+      curriculum_graph_from_list(node_list = node_list, edge_list = edge_list)
+    plot(c)
+
+  } else{
+    path <-
+      "C:\\Users\\danie\\Desktop\\School\\ALT-Shiny-App\\data\\Example-Curriculum.csv"
+
+    # df[is.na(df)] <- ""
+
+
+
+    node_list <-
+      data.frame(id = df$id,
+                 label = df$label,
+                 term = df$term)
+
+    db_ids <- df[which(df$label %in% selectedOptions), ]$id
+    app_ids <- 1:length(db_ids)
+
+    map <- setNames(object = app_ids, nm = db_ids)
 
 
     edge_list <- data.frame(from = NA, to = NA)
-    terms <- c()
     for (node_id in node_list$id) {
-      terms <- subset(df, id == node_id)$term
       node_reqs <- subset(df, id == node_id)$requisites
       req_ids <- ""
       if (node_reqs != "") {
@@ -45,52 +64,24 @@ plot_graph <- function(selectedOptions){
       }
     }
     edge_list <- stats::na.omit(edge_list)
-    node_list$term <- terms
 
-    #TODO need to fix CurricularAnalytics package
-    curriculum_graph_from_list(node_list,edge_list)
+    for (i in 1:nrow(edge_list)) {
+      if (edge_list$from[i] %in% names(map)) {
+        edge_list$from[i] <-  map[which(names(map) %in%  edge_list$from[i])]
+      }
+    }
 
-
-
-    obj <- list()
-    class(obj) <- "curriculum_graph"
-
-
-    bf_df <- blocking_factor(node_list, edge_list)
-    bf <- bf_df$bynode
-
-    node_list <- dplyr::left_join(node_list, bf, by = c("id" = "id"))
-
-    df_df <- delay_factor(node_list,edge_list)
-    df <- df_df$bynode
-
-    node_list <- dplyr::left_join(node_list, df, by = c("id" = "id"))
-
-    cf <- centrality_factor(node_list, edge_list)
-
-    node_list <- dplyr::left_join(node_list, cf, by = c("id" = "id"))
-
-    sc_df <- structural_complexity(node_list, edge_list)
-    sc <- sc_df$bynode
-
-    node_list <- dplyr::left_join(node_list, sc, by = c("id" = "id"))
-
-    obj$node_list <- node_list
-    obj$edge_list <- edge_list
-    obj$network <- igraph::graph_from_data_frame(d = edge_list,
-                                                 vertices = node_list,
-                                                 directed = TRUE)
-
-    obj$sc_total <- sc_df$total
-
-    obj$bf_total <- bf_df$total
-
-    obj$df_total <- df_df$total
+    for (i in 1:nrow(edge_list)) {
+      if (edge_list$to[i] %in% names(map)) {
+        edge_list$to[i] <-  map[which(names(map) %in%  edge_list$to[i])]
+      }
+    }
 
 
-
-    plot.curriculum_graph(obj)
-
+    node_list$id <- rownames(node_list) |> as.numeric()
+    c <-
+      curriculum_graph_from_list(node_list = node_list, edge_list = edge_list)
+    plot(c)
 
   }
 }
