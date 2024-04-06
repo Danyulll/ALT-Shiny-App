@@ -7,10 +7,15 @@ library(readr)
 library(igraph)
 
 plot_graph <- function(selectedOptions) {
+  path <-
+    "C:\\Users\\danie\\Desktop\\School\\ALT-Shiny-App\\data\\Example-Curriculum.csv"
   df <-
     utils::read.csv(path)
 
   df <- df[which(df$label %in% selectedOptions), ]
+
+  if(is.null(selectedOptions)) warning("selectedOptions is null (plot_graph)")
+
   if (length(selectedOptions) %in% 0) {
     # Currently if this condition just checks 0 when you uncheck all boxes it will still display 1 node despite the checkboxes vector being 0. This is because of how selectedOptions is updated, its length stays at 1. Need to learn how to force update SelecredOptions so that it goes to length 0 when all checkboxes are unchecked.
     nodes <- data.frame(id = numeric(0), label = character(0))
@@ -27,8 +32,8 @@ plot_graph <- function(selectedOptions) {
     plot(c)
 
   } else{
-    path <-
-      "C:\\Users\\danie\\Desktop\\School\\ALT-Shiny-App\\data\\Example-Curriculum.csv"
+
+    # cat(paste0("SelectedOptions contents in else of plot_graph: ",paste0(selectedOptions,collapse = ",")))
 
     # df[is.na(df)] <- ""
 
@@ -66,15 +71,29 @@ plot_graph <- function(selectedOptions) {
     edge_list <- stats::na.omit(edge_list)
 
     for (i in 1:nrow(edge_list)) {
-      if (edge_list$from[i] %in% names(map)) {
-        edge_list$from[i] <-  map[which(names(map) %in%  edge_list$from[i])]
-      }
+     if(length(edge_list$from[i] %in% names(map))==0){
+       next()
+     }else{
+       if(is.null(edge_list$to[i] %in% names(map))) cat("Error 1 something is null\n")
+       if(length(edge_list$from[i] %in% names(map))==0) cat("Error 2 0 length argument\n")
+
+       if (edge_list$from[i] %in% names(map)) {
+         edge_list$from[i] <-  map[which(names(map) %in%  edge_list$from[i])]
+       }
+     }
     }
 
     for (i in 1:nrow(edge_list)) {
-      if (edge_list$to[i] %in% names(map)) {
-        edge_list$to[i] <-  map[which(names(map) %in%  edge_list$to[i])]
+      cat(length(edge_list$to[i] %in% names(map) == 0))
+      cat("\n")
+      if (length(edge_list$to[i] %in% names(map) == 0) == 0) {
+        next
+      } else{
+        if (edge_list$to[i] %in% names(map)) {
+          edge_list$to[i] <-  map[which(names(map) %in%  edge_list$to[i])]
+        }
       }
+
     }
 
 

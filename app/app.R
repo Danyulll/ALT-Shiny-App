@@ -38,92 +38,65 @@ library(RSQLite)             # SQLite interface for R
 source("functions.R")
 
 # Define the user interface of the Shiny app
-ui <-
-  fluidPage(titlePanel("Data Science Curriculum Explorer"),
-            # Title of the app
-            fluidRow(
-              column(
-                4,
-                # Side panel for inputs and information
-                wellPanel(
-                  h4("Courses Information"),
+ui <- navbarPage("Data Science Curriculum Explorer V0.1",
+                 tabPanel("Legend",
+                          titlePanel("About the App"),
+                          fluidRow(
+                            column(12,
+                                   h4("Welcome to the Data Science Curriculum Explorer!"),
+                                   p("This R Shiny application allows users to explore various data science courses offered across different academic years."),
+                                   p("You can select courses based on their year and subject code to visualize course dependencies, access detailed course information, and receive personalized course recommendations."),
+                                   p("Navigate to the 'Explorer' tab to start using the application."),
+                                   h2("Legend"),
+                                   p("This app makes use of a variety of metrics to help assess curicula in a data-driven way. At the top of the curriculum graph, and when nodes are selected, these metrics will be printed. Read below to learn more:"),
+                                   HTML(
+                                     "<ul>
+    <li><strong>Delay Factor (df)</strong> - Measures the degree to which failing this course will delay graduation.</li>
+    <li><strong>Blocking Factor (bf)</strong> - Measures the degree to which failing this course will block access to future courses.</li>
+    <li><strong>Centrality (cf)</strong> - Measures the degree to which a course is central to a curriculum and therefore contains important concepts for the entirety of the program.</li>
+    <li><strong>Structural Complexity (sc)</strong> - Measures the degree to which the course or curriculum adds to the difficulty of completing the program.</li>
+  </ul>"
+                                   )
 
-                  # Dropdown for selecting the year
-                  selectInput(
-                    "dropdownYear",
-                    "Select Year",
-                    choices = c("Year 1", "Year 2", "Year 3", "Year 4")
-                  ),
 
-                  # Dropdown for selecting the course code
-                  selectInput(
-                    "dropdownCourseCode",
-                    "Select Code",
-                    choices = c(
-                      "MATH",
-                      "DATA",
-                      "BIOL",
-                      "CHEM",
-                      "EESC",
-                      "PHYS",
-                      "COSC",
-                      "ENGL",
-                      "APSC",
-                      "STAT",
-                      "PSYO",
-                      "PHIL"
-                    )
-                  ),
-
-                  # Dynamic UI element to display selected courses
-                  uiOutput("coursestaken"),
-
-                  # Button to reset selections
-                  actionButton("resetButton", "Reset"),
-
-                  # Placeholder for potential legend information
-                  h4("Legend"),
-
-                  # Dynamic UI element for displaying text or HTML content
-                  uiOutput("formattedText")
-                )
-              ),
-              column(4,
-                     wellPanel(
-                       h4("Interactive Graph"),
-                       visNetworkOutput("network") # Output slot for the visNetwork graph
-                     )),
-              column(4,
-                     wellPanel(
-                       tabsetPanel(
-                         id = "course_recommendations",
-
-                         # Tabs for different types of course recommendations
-                         tabPanel("Topics"),
-
-                         # Placeholder for topic-based recommendations
-                         tabPanel("Predicted Grade"),
-
-                         # Placeholder for grade predictions
-                         tabPanel(
-                           # Tab for course similarity recommendations
-                           "Course Similarity",
-
-                           # Input for similarity queries
-                           textAreaInput("text_input", "Enter Text", value = "", rows = 1),
-
-                           # Year selection for recommendations
-                           selectInput("sugYear", "Select Year", choices = c("1", "2", "3", "4", "Any")),
-
-                           # Button to submit the similarity query
-                           actionButton("submit_button", "Submit"),
-
-                           # Output slot for displaying course similarity results
-                           uiOutput("courseRecSim")
-                         )
-                       )
-                     ))
-            ))
+                            )
+                          )
+                 ),
+                 tabPanel("Explorer",
+                          titlePanel("Data Science Curriculum Explorer"),
+                          fluidRow(
+                            column(4,
+                                   # Side panel for inputs and information
+                                   wellPanel(
+                                     h4("Courses Information"),
+                                     selectInput("dropdownYear", "Select Year", choices = c("Year 1", "Year 2", "Year 3", "Year 4")),
+                                     selectInput("dropdownCourseCode", "Select Code", choices = c("MATH", "DATA", "BIOL", "CHEM", "EESC", "PHYS", "COSC", "ENGL", "APSC", "STAT", "PSYO", "PHIL")),
+                                     uiOutput("coursestaken"),
+                                     actionButton("resetButton", "Reset")
+                                   )
+                            ),
+                            column(4,
+                                   wellPanel(
+                                     h4("Interactive Graph"),
+                                     visNetworkOutput("network")
+                                   )
+                            ),
+                            column(4,
+                                   wellPanel(
+                                     tabsetPanel(
+                                       tabPanel("Predicted Grade"),
+                                       tabPanel("Course Similarity",
+                                                textAreaInput("text_input", "Enter Text", value = "", rows = 1),
+                                                selectInput("sugYear", "Select Year", choices = c("1", "2", "3", "4", "Any")),
+                                                actionButton("submit_button", "Submit"),
+                                                uiOutput("courseRecSim")
+                                       )
+                                     )
+                                   )
+                            )
+                          )
+                 )
+)
 
 server <- function(input, output, session) {
   # Create reactive element to check changes in database contents
@@ -157,7 +130,7 @@ server <- function(input, output, session) {
       databaseContents() # Courses are taken from database
 
     cat("Selected courses in graph:\n")
-    cat(paste(courses$course_name))
+    cat(paste(courses$course_name,sep = ","))
     cat("\n")
 
     # If o courses selected, display an empty graph
@@ -308,19 +281,6 @@ server <- function(input, output, session) {
   })
 
 
-
-
-
-  output$formattedText <- renderUI({
-    HTML(
-      "
-    df: Delay Factor - measures the degree to which failing this course will delay graduation.<br>
-    bf: Blocking Factor - measures the degree to which failing this course will block access to future courses.<br>
-    cf: Centrality - measures the degree to which a course is central to a curriculum and therefore contains important concepts for the entirety of the program.<br>
-    sc: Structural Complexity - measures the degree to which the course or curriculum add to the difficutly of completing the program.<br>
-    "
-    )
-  })
 
   # Logic for reset button to remove all courses from database
   observeEvent(input$resetButton, {
