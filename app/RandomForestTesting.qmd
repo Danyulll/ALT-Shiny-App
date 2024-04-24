@@ -3,23 +3,173 @@ title: "Testing Random Forest for Grade Prediction"
 format: html
 ---
 
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
 ```{r}
-1 + 1
+format_data_no_fail_handeling <- function(empty, courses, df_whole) {
+  df_whole |> filter(COURSE_CODE %in% courses) |> pull(STUD_NO_ANONYMOUS) |> unique() -> ids
+  
+  df_filtered <-
+    data.frame(
+     "STUD_NO_ANONYMOUS" = NA, "HDR_CRS_PCT_GRD" = NA,   "HDR_CRS_LTTR_GRD" = NA,  "COURSE_CODE" = NA 
+    )
+  
+  for (id in ids) {
+    courses_taken <- subset(df_whole, STUD_NO_ANONYMOUS == id)$COURSE_CODE
+    if (all(courses %in% courses_taken)) {
+      for (course in courses) {
+        df_filtered <-
+          rbind(df_filtered,
+                subset(df_whole, STUD_NO_ANONYMOUS == id &
+                           COURSE_CODE == course))
+      }
+    }
+  }
+  df_filtered <- na.omit(df_filtered)
+  df_filtered$STUD_NO_ANONYMOUS |> unique() -> filtered_ids
+  
+  length(filtered_ids)
+  
+  for (id in filtered_ids) {
+    maj <-
+      subset(df_whole, STUD_NO_ANONYMOUS == id)$CURR_SPEC_PRIM_SUBJECT_1[length(subset(df_whole, STUD_NO_ANONYMOUS == id)$CURR_SPEC_PRIM_SUBJECT_1)]
+    
+    df_filt <-
+      subset(df_whole, STUD_NO_ANONYMOUS == id)[, c("HDR_CRS_PCT_GRD", "COURSE_CODE")]
+      df_filt <- df_filt[df_filt$COURSE_CODE %in% courses,]
+    df_filt <- data.frame(t(df_filt))
+    
+    # Take highest grade for repeat courses
+    if (any(duplicated(as.vector(df_filt[2,])))) {
+      dups_indicies <- numeric(2)
+    } else{
+      dups_indicies <- numeric(0)
+    }
+    
+    while (length(dups_indicies) > 1) {
+      dups_indicies <- which(duplicated(as.vector(df_filt[2,])))
+      index <- dups_indicies[1]
+      
+      # Get repeated course
+      repeat_course <- df_filt[2, index]
+      repeat_course_df <-
+        df_filt[, which(df_filt[2,] == repeat_course)]
+      
+      # Get best grade of repeated course
+      best_idx <-
+        which.max(repeat_course_df[1,])
+      best_grade <- repeat_course_df[, best_idx]
+      
+      # drop repeated course in df
+      filter <- (as.vector(df_filt[2,]) == repeat_course)
+      trues <- which(filter == TRUE)
+      df_filt <- df_filt[,-trues]
+      
+      # attach best score of repeated course
+      df_filt <- cbind(df_filt, best_grade)
+    }
+    
+    cols <- df_filt[2,]
+    
+    if (nrow(data.frame(df_filt[1, ])) > 1) {
+      df_filt <- t(data.frame(df_filt[1, ]))
+    } else{
+      df_filt <- data.frame(df_filt[1, ])
+    }
+    
+    colnames(df_filt) <- cols
+    
+    rownames(df_filt) <- ""
+    
+    if (sum(colnames(empty) %in% colnames(df_filt)) == ncol(empty)) {
+      empty <- rbind(empty, df_filt)
+  }
+  }
+  
+  empty <- na.omit(empty)
+  empty <- data.frame(sapply(empty, as.numeric))
+  empty
+}
 ```
 
-You can add options to executable code like this 
 
 ```{r}
-#| echo: false
-2 * 2
+df <- read.csv("..\\data\\student-data.csv")
+df_clean <- df[,c(1,12,13,15,16)]
+df_clean <- na.omit(df_clean)
+# Do some cleaning on chr columns
+df_clean$STUD_NO_ANONYMOUS <- trimws(df_clean$STUD_NO_ANONYMOUS)
+df_clean$CRS_DPT_CD <- trimws(df_clean$CRS_DPT_CD)
+df_clean$HDR_CRS_LTTR_GRD <- trimws(df_clean$HDR_CRS_LTTR_GRD)
+
+# Factor grades column
+grades <-
+  c("A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F")
+df_clean$HDR_CRS_LTTR_GRD <-
+  factor(df_clean$HDR_CRS_LTTR_GRD, levels = grades)
+
+# Create course code column
+df_clean$COURSE_CODE <- paste(df_clean$CRS_DPT_CD, df_clean$CRS_NO, sep = ".")
+df_clean <- df_clean[,-(2:3)]
+df <- subset(df, HDR_CRS_PCT_GRD < 999)
+df_clean <- subset(df_clean, HDR_CRS_PCT_GRD < 999)
+head(df_clean)
 ```
 
-The `echo: false` option disables the printing of code (only output is displayed).
+```{r}
+# Define courses we want to make a graph for
+courses <- c("MATH.100", "MATH.101", "DATA.101", "STAT.230")
+empty <- data.frame("MATH.100" = NA, "MATH.101" = NA, "DATA.101" = NA, "STAT.230" = NA)
+
+intro_stat_1 <- format_data_no_fail_handeling(empty, courses, df_clean)
+
+head(intro_stat_1)
+```
+
+```{r}
+library(randomForest)
+res <- "DATA.101"
+
+rf.out <- randomForest(as.formula(paste0(res,"~.")), data=intro_stat_1)
+rf.out
+```
+
+```{r}
+impor <- importance(rf.out)
+rownames(impor)[which.max(impor)]
+
+impor["dimnames"]
+```
+
+```{r}
+plot(rf.out)
+```
+
+```{r}
+pred_courses <- c("MATH.100","MATH.101","STAT.230")
+pred_courses_scores <- c(70, 55, 50)
+out_mat <- matrix(pred_courses_scores)
+rownames(out_mat) <- pred_courses
+out_mat <- t(out_mat)
+out_df <- as.data.frame(out_mat)
+predict(rf.out, newdata=out_df)
+```
+
+```{r}
+ rf.out$mse
+str(rf.out)
+```
+
+
+
+```{r}
+pred_courses_scores <- "20,30,50,30"
+
+pred_courses_scores <- "20,30,50,30"
+pred_courses_scores <- as.numeric(unlist(strsplit(pred_courses_scores, ",")))
+
+
+
+```
+
+
+
+

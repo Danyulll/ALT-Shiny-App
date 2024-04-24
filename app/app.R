@@ -16,7 +16,7 @@
 # prerequisites, recommendations based on text analysis, and an interactive graph
 # representation of the course structure.
 #
-# TODO finish app and write better descriptionm
+# TODO finish app and write better description
 #
 #
 # Note to future students working on this...
@@ -33,6 +33,7 @@ library(dplyr)               # For data manipulation
 library(readr)               # For reading CSV files
 library(DBI)                 # Database Interface for communication with databases
 library(RSQLite)             # SQLite interface for R
+library(randomForest)
 
 # Source external helper functions
 source("functions.R")
@@ -84,7 +85,12 @@ ui <- navbarPage("Data Science Curriculum Explorer V0.1",
                             column(4,
                                    wellPanel(
                                      tabsetPanel(
-                                       tabPanel("Predicted Grade"),
+                                       tabPanel("Predicted Grade",
+                                                textAreaInput("response_input", "Response Course", value = "Enter the course you wish to predict for", rows = 1),
+                                       textAreaInput("predictor_input", "Predictor Course(s)", value = "Enter the course you wish to use as predictors", rows = 1),
+                                       textAreaInput("predictor_grade_input", "Predictor Course(s) Grade(s)", value = "Enter the grades of your above courses", rows = 1),
+                                       actionButton("submit_button_pred_course_grad", "Submit"),
+                                       uiOutput("pred_grad_output")),
                                        tabPanel("Course Similarity",
                                                 textAreaInput("text_input", "Enter Text", value = "", rows = 1),
                                                 selectInput("sugYear", "Select Year", choices = c("1", "2", "3", "4", "Any")),
@@ -126,22 +132,22 @@ server <- function(input, output, session) {
 
   # Render curriculum graph
   output$network <- renderVisNetwork({
-    courses <-
+    predictor_input <-
       databaseContents() # Courses are taken from database
 
     cat("Selected courses in graph:\n")
-    cat(paste(courses$course_name,sep = ","))
+    cat(paste(predictor_input$course_name,sep = ","))
     cat("\n")
 
     # If o courses selected, display an empty graph
-    if (nrow(courses) == 0) {
+    if (nrow(predictor_input) == 0) {
       empty_nodes <-
         data.frame(id = numeric(0), label = character(0))
       empty_edges <-
         data.frame(from = numeric(0), to = numeric(0))
       visNetwork(empty_nodes, empty_edges)
     } else {
-      courseNames <- courses$course_name
+      courseNames <- predictor_input$course_name
       plot_graph(courseNames)
     }
   })
@@ -296,6 +302,28 @@ server <- function(input, output, session) {
   })
 
 
+  course_pred_data <- eventReactive(input$submit_button_pred_course_grad,{ df <-
+    read.csv("..\\data\\student-data.csv")
+  df_clean <- df[,c(1,12,13,15,16)]
+  df_clean <- na.omit(df_clean)
+  # Do some cleaning on chr columns
+  df_clean$STUD_NO_ANONYMOUS <- trimws(df_clean$STUD_NO_ANONYMOUS)
+  df_clean$CRS_DPT_CD <- trimws(df_clean$CRS_DPT_CD)
+  df_clean$HDR_CRS_LTTR_GRD <- trimws(df_clean$HDR_CRS_LTTR_GRD)
+
+  # Factor grades column
+  grades <-
+    c("A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F")
+  df_clean$HDR_CRS_LTTR_GRD <-
+    factor(df_clean$HDR_CRS_LTTR_GRD, levels = grades)
+
+  # Create course code column
+  df_clean$COURSE_CODE <- paste(df_clean$CRS_DPT_CD, df_clean$CRS_NO, sep = ".")
+  df_clean <- df_clean[,-(2:3)]
+  df <- subset(df, HDR_CRS_PCT_GRD < 999)
+  df_clean <- subset(df_clean, HDR_CRS_PCT_GRD < 999)
+  df_clean})
+
   # Create reactive course suggestion data for topic model
   reactive_data <-
     eventReactive(input$submit_button, {
@@ -348,6 +376,79 @@ server <- function(input, output, session) {
       )
     }
   })
+
+  # Initialize a reactive value to control UI display
+  values <- reactiveValues(ready = FALSE)
+
+  observeEvent(input$submit_button_pred_course_grad, {
+    cat("Loading data for grade prediction.\n")
+    data <- course_pred_data()  # Loading your data
+    cat("Data loaded.\n")
+
+    # Handling user inputs
+    response <- input$response_input
+    predictor_input <- input$predictor_input
+    predictor_input <- trimws(unlist(strsplit(predictor_input, ",")))
+    predictor_input <- c(predictor_input, response)
+    cat("Here is the predictor input:\n")
+    cat(predictor_input)
+    cat("\n")
+
+    cat("Here is the response input:\n")
+    cat(response)
+    cat("\n")
+
+    # Preparing data for prediction
+    empty <- setNames(as.data.frame(matrix(nrow = 1, ncol = length(predictor_input), data = NA)), predictor_input)
+    preds <- format_data_no_fail_handling(empty, predictor_input, df_clean)
+
+    # Running the random forest model
+    rf.out <- randomForest(as.formula(paste0(response,"~.")), data=preds)
+
+    # Extracting importance and determining the most important course
+    impor <- importance(rf.out)
+    most_important_course <- rownames(impor)[which.max(impor)]
+
+    # Preparing prediction input data
+    pred_courses_scores <- input$predictor_grade_input
+    pred_courses_scores <- as.numeric(unlist(strsplit(pred_courses_scores, ",")))
+    out_mat <- matrix(pred_courses_scores)
+    rownames(out_mat) <- predictor_input[predictor_input != response]
+    out_mat <- t(out_mat)
+    out_df <- as.data.frame(out_mat)
+
+    # Predicting course grades
+    predict.out <- predict(rf.out, newdata=out_df)
+
+    # Update reactive values
+    output$predicted_grades <- renderTable({
+      data.frame(Course = names(predict.out), Predicted_Grade = as.numeric(predict.out))
+    })
+
+    output$most_important_course_output <- renderText({
+      most_important_course
+    })
+
+    # Set reactive value to TRUE to indicate that processing is complete and UI should update
+    values$ready <- TRUE
+  })
+
+  # Render UI components conditionally based on the reactive value
+  output$pred_grad_output <- renderUI({
+    if (values$ready) {
+      tagList(
+        h4("Predicted Course Grades:"),
+        tableOutput("predicted_grades"),
+        h4("Most Important Course for Prediction:"),
+        textOutput("most_important_course_output")
+      )
+    }
+  })
+
+
+
+
+
 
   # Dataframe to otuput for course sugesstion topic model
   output$table_view <- renderTable({

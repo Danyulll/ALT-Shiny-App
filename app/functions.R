@@ -363,3 +363,88 @@ is_python_installed <- function() {
   return(!is.null(py_config$python))
 }
 
+format_data_no_fail_handling <- function(empty, courses, df_whole) {
+  df_whole |> filter(COURSE_CODE %in% courses) |> pull(STUD_NO_ANONYMOUS) |> unique() -> ids
+
+  df_filtered <-
+    data.frame(
+      "STUD_NO_ANONYMOUS" = NA, "HDR_CRS_PCT_GRD" = NA,   "HDR_CRS_LTTR_GRD" = NA,  "COURSE_CODE" = NA
+    )
+
+  for (id in ids) {
+    courses_taken <- subset(df_whole, STUD_NO_ANONYMOUS == id)$COURSE_CODE
+    if (all(courses %in% courses_taken)) {
+      for (course in courses) {
+        df_filtered <-
+          rbind(df_filtered,
+                subset(df_whole, STUD_NO_ANONYMOUS == id &
+                         COURSE_CODE == course))
+      }
+    }
+  }
+  df_filtered <- na.omit(df_filtered)
+  df_filtered$STUD_NO_ANONYMOUS |> unique() -> filtered_ids
+
+  length(filtered_ids)
+
+  for (id in filtered_ids) {
+    maj <-
+      subset(df_whole, STUD_NO_ANONYMOUS == id)$CURR_SPEC_PRIM_SUBJECT_1[length(subset(df_whole, STUD_NO_ANONYMOUS == id)$CURR_SPEC_PRIM_SUBJECT_1)]
+
+    df_filt <-
+      subset(df_whole, STUD_NO_ANONYMOUS == id)[, c("HDR_CRS_PCT_GRD", "COURSE_CODE")]
+    df_filt <- df_filt[df_filt$COURSE_CODE %in% courses,]
+    df_filt <- data.frame(t(df_filt))
+
+    # Take highest grade for repeat courses
+    if (any(duplicated(as.vector(df_filt[2,])))) {
+      dups_indicies <- numeric(2)
+    } else{
+      dups_indicies <- numeric(0)
+    }
+
+    while (length(dups_indicies) > 1) {
+      dups_indicies <- which(duplicated(as.vector(df_filt[2,])))
+      index <- dups_indicies[1]
+
+      # Get repeated course
+      repeat_course <- df_filt[2, index]
+      repeat_course_df <-
+        df_filt[, which(df_filt[2,] == repeat_course)]
+
+      # Get best grade of repeated course
+      best_idx <-
+        which.max(repeat_course_df[1,])
+      best_grade <- repeat_course_df[, best_idx]
+
+      # drop repeated course in df
+      filter <- (as.vector(df_filt[2,]) == repeat_course)
+      trues <- which(filter == TRUE)
+      df_filt <- df_filt[,-trues]
+
+      # attach best score of repeated course
+      df_filt <- cbind(df_filt, best_grade)
+    }
+
+    cols <- df_filt[2,]
+
+    if (nrow(data.frame(df_filt[1, ])) > 1) {
+      df_filt <- t(data.frame(df_filt[1, ]))
+    } else{
+      df_filt <- data.frame(df_filt[1, ])
+    }
+
+    colnames(df_filt) <- cols
+
+    rownames(df_filt) <- ""
+
+    if (sum(colnames(empty) %in% colnames(df_filt)) == ncol(empty)) {
+      empty <- rbind(empty, df_filt)
+    }
+  }
+
+  empty <- na.omit(empty)
+  empty <- data.frame(sapply(empty, as.numeric))
+  empty
+}
+
