@@ -337,7 +337,7 @@ server <- function(input, output, session) {
 
         df <-
           read_csv(
-            "C:\\Users\\danie\\Desktop\\School\\ALT-Shiny-App\\data\\UBCO_Course_Calendar.csv",
+            "..\\data\\UBCO_Course_Calendar.csv",
             locale = locale(encoding = "ISO-8859-1")
           ) |>
           filter(!is.na(`Course Description`))

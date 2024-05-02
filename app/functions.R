@@ -8,7 +8,7 @@ library(igraph)
 
 plot_graph <- function(selectedOptions) {
   path <-
-    "C:\\Users\\danie\\Desktop\\School\\ALT-Shiny-App\\data\\Example-Curriculum.csv"
+    "..\\data\\Example-Curriculum.csv"
   df <-
     utils::read.csv(path)
 
