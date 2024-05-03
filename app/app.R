@@ -39,12 +39,12 @@ library(randomForest)
 source("functions.R")
 
 # Define the user interface of the Shiny app
-ui <- navbarPage("Data Science Curriculum Explorer V0.1",
+ui <- navbarPage("DCADS V0.1",
                  tabPanel("Legend",
                           titlePanel("About the App"),
                           fluidRow(
                             column(12,
-                                   h4("Welcome to the Data Science Curriculum Explorer!"),
+                                   h4("Welcome to the Data-driven Curriculum Analytics and Design System (DCADS)!"),
                                    p("This R Shiny application allows users to explore various data science courses offered across different academic years."),
                                    p("You can select courses based on their year and subject code to visualize course dependencies, access detailed course information, and receive personalized course recommendations."),
                                    p("Navigate to the 'Explorer' tab to start using the application."),
@@ -400,9 +400,18 @@ server <- function(input, output, session) {
 
     # Preparing data for prediction
     empty <- setNames(as.data.frame(matrix(nrow = 1, ncol = length(predictor_input), data = NA)), predictor_input)
-    preds <- format_data_no_fail_handling(empty, predictor_input, df_clean)
+
+    # This is just for the conference, change this later
+    if(sum(c("DATA.311","STAT.230","MATH.101","COSC.111","MATH.100") %in% predictor_input) == 5){
+      load("../data/grade.RData")
+      preds <- format_data_no_fail_handling.out
+      cat("Empty loaded sucessfully\n")
+    }else{
+      preds <- format_data_no_fail_handling(empty, predictor_input, data)
+    }
 
     # Running the random forest model
+    cat("Starting rf\n")
     rf.out <- randomForest(as.formula(paste0(response,"~.")), data=preds)
 
     # Extracting importance and determining the most important course

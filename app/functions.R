@@ -364,6 +364,7 @@ is_python_installed <- function() {
 }
 
 format_data_no_fail_handling <- function(empty, courses, df_whole) {
+
   df_whole |> filter(COURSE_CODE %in% courses) |> pull(STUD_NO_ANONYMOUS) |> unique() -> ids
 
   df_filtered <-
