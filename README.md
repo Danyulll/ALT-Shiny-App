@@ -10,7 +10,7 @@ This R Shiny application, **Data Science Curriculum Explorer**, allows users to 
   
 ## Usage
 
-Ensure you have the following R packages installed:
+Ensure you have the following R packages installed from CRAN:
 
 - `CurricularAnalytics`
 - `visNetwork`
@@ -23,5 +23,5 @@ Ensure you have the following R packages installed:
 - `DBI`
 - `RSQLite`
 
-Then simply open `App.R` and run the script!
+Then simply open `app.R` and run the script!
 
