@@ -11,15 +11,20 @@
 # database for persistent storage of user selections and utilizes various R packages
 # for data manipulation, visualization, and interaction.
 #
-# The application aims to assist students and academic advisors in planning and
+# The application aims to assist students and academic advisers in planning and
 # optimizing their data science curriculum by providing insights into course
 # prerequisites, recommendations based on text analysis, and an interactive graph
 # representation of the course structure.
 #
-# TODO finish app and write better description
+# Documentation for how the app works and how to change things is available in the Developer Manual.
 #
-#
-# Note to future students working on this...
+# Just a couple of notes. The grade prediction functionality is a placeholder for a real model that could be added.
+# As it is, it only works for one course and was just added to see what the planned app would look like.
+# In this version of the app a topic model is fitted in Python in real time and the document embeddings are retrieved.
+# Then the cosine similarity is taken to decide which courses to select. The model implemented is Latent Semantic Analysis.
+# Using a R topic model like Latent Dirichlet Allocation would make much more sense here and remove the Python dependency.
+# To overhaul this all that would have to be done is to remove all the Python code and add some logic reading in a csv of document
+# embeddings and taking the distance between them.
 ##########################################################################################
 
 
@@ -33,7 +38,8 @@ library(dplyr)               # For data manipulation
 library(readr)               # For reading CSV files
 library(DBI)                 # Database Interface for communication with databases
 library(RSQLite)             # SQLite interface for R
-library(randomForest)
+library(randomForest)        # Random forest for placeholder model
+
 
 # Source external helper functions
 source("functions.R")
@@ -86,9 +92,9 @@ ui <- navbarPage("DCADS V0.1",
                                    wellPanel(
                                      tabsetPanel(
                                        tabPanel("Predicted Grade",
-                                                textAreaInput("response_input", "Response Course", value = "Enter the course you wish to predict for", rows = 1),
-                                       textAreaInput("predictor_input", "Predictor Course(s)", value = "Enter the course you wish to use as predictors", rows = 1),
-                                       textAreaInput("predictor_grade_input", "Predictor Course(s) Grade(s)", value = "Enter the grades of your above courses", rows = 1),
+                                                textAreaInput("response_input", "Response Course", value = "DATA.311", rows = 1),
+                                       textAreaInput("predictor_input", "Predictor Course(s)", value = "STAT.230,MATH.101,MATH.100,COSC.111", rows = 1),
+                                       textAreaInput("predictor_grade_input", "Predictor Course(s) Grade(s)", value = "70,85,75,90", rows = 1),
                                        actionButton("submit_button_pred_course_grad", "Submit"),
                                        uiOutput("pred_grad_output")),
                                        tabPanel("Course Similarity",
@@ -105,6 +111,9 @@ ui <- navbarPage("DCADS V0.1",
 )
 
 server <- function(input, output, session) {
+
+  ############# DATABASE SECTION ##################
+
   # Create reactive element to check changes in database contents
   databaseContents <- reactivePoll(
     50,
@@ -129,95 +138,6 @@ server <- function(input, output, session) {
     year INTEGER,
     course_code TEXT)"
   dbExecute(db, query)
-
-  # Render curriculum graph
-  output$network <- renderVisNetwork({
-    predictor_input <-
-      databaseContents() # Courses are taken from database
-
-    cat("Selected courses in graph:\n")
-    cat(paste(predictor_input$course_name,sep = ","))
-    cat("\n")
-
-    # If o courses selected, display an empty graph
-    if (nrow(predictor_input) == 0) {
-      empty_nodes <-
-        data.frame(id = numeric(0), label = character(0))
-      empty_edges <-
-        data.frame(from = numeric(0), to = numeric(0))
-      visNetwork(empty_nodes, empty_edges)
-    } else {
-      courseNames <- predictor_input$course_name
-      plot_graph(courseNames)
-    }
-  })
-
-  # Render course selection UI
-  output$coursestaken <- renderUI({
-    # Get the year number for the selected Year
-    yearNum <-
-      as.numeric(gsub("Year ", "", input$dropdownYear))
-
-    # Fetch selected courses from the database for the current year
-    selectedCourses <-
-      dbGetQuery(db,
-                 paste0(
-                   "SELECT course_name FROM selected_courses WHERE year = ",
-                   yearNum
-                 ))
-
-    # Extract the course names to a vector
-    selectedCourseNames <-
-      selectedCourses$course_name
-
-    # Now use selectedCourseNames for the 'selected' parameter to maintain previosuly selected courses
-    if (input$dropdownYear == "Year 1") {
-      checkboxGroupInput(
-        "checkboxes1",
-        "Choose Options",
-        choices = getCourses(
-          1,
-          "../data/Example-Curriculum.csv",
-          input$dropdownCourseCode
-        ),
-        selected = selectedCourseNames
-      )
-    } else if (input$dropdownYear == "Year 2") {
-      checkboxGroupInput(
-        "checkboxes2",
-        "Choose Options",
-        choices = getCourses(
-          2,
-          "../data/Example-Curriculum.csv",
-          input$dropdownCourseCode
-        ),
-        selected = selectedCourseNames
-      )
-    } else if (input$dropdownYear == "Year 3") {
-      checkboxGroupInput(
-        "checkboxes3",
-        "Choose Options",
-        choices = getCourses(
-          3,
-          "../data/Example-Curriculum.csv",
-          input$dropdownCourseCode
-        ),
-        selected = selectedCourseNames
-      )
-    } else if (input$dropdownYear == "Year 4") {
-      checkboxGroupInput(
-        "checkboxes4",
-        "Choose Options",
-        choices = getCourses(
-          4,
-          "../data/Example-Curriculum.csv",
-          input$dropdownCourseCode
-        ),
-        selected = selectedCourseNames
-      )
-    }
-  })
-
 
   # Helper function to update database based on checkbox changes
   updateDatabaseBasedOnCheckbox <-
@@ -286,8 +206,6 @@ server <- function(input, output, session) {
     updateDatabaseBasedOnCheckbox("checkboxes4", 4, input$dropdownCourseCode)
   })
 
-
-
   # Logic for reset button to remove all courses from database
   observeEvent(input$resetButton, {
     # Reset the UI elements for all checkboxes to be unselected
@@ -301,6 +219,106 @@ server <- function(input, output, session) {
 
   })
 
+  # We want each launch of the app to be fresh so delete all stored courses
+  # If accounts are implemented this will be removed and log ins will be tracked
+  onStop(function() {
+    dbDisconnect(db)
+    file.remove("my_courses_db2.sqlite")
+  })
+
+  ############# GRAPHING SECTION ##################
+  # Render curriculum graph
+  output$network <- renderVisNetwork({
+    predictor_input <-
+      databaseContents() # Courses are taken from database
+
+    cat("Selected courses in graph:\n")
+    cat(paste(predictor_input$course_name,sep = ","))
+    cat("\n")
+
+    # If no courses selected, display an empty graph
+    if (nrow(predictor_input) == 0) {
+      empty_nodes <-
+        data.frame(id = numeric(0), label = character(0))
+      empty_edges <-
+        data.frame(from = numeric(0), to = numeric(0))
+      visNetwork(empty_nodes, empty_edges)
+    } else {
+      courseNames <- predictor_input$course_name
+      plot_graph(courseNames)
+    }
+  })
+
+
+  ############# COURSE NAVIGATION SECTION ##################
+
+  # Render course selection UI
+  output$coursestaken <- renderUI({
+    # Get the year number for the selected Year
+    yearNum <-
+      as.numeric(gsub("Year ", "", input$dropdownYear))
+
+    # Fetch selected courses from the database for the current year
+    selectedCourses <-
+      dbGetQuery(db,
+                 paste0(
+                   "SELECT course_name FROM selected_courses WHERE year = ",
+                   yearNum
+                 ))
+
+    # Extract the course names to a vector
+    selectedCourseNames <-
+      selectedCourses$course_name
+
+    # Now use selectedCourseNames for the 'selected' parameter to maintain previosuly selected courses
+    if (input$dropdownYear == "Year 1") {
+      checkboxGroupInput(
+        "checkboxes1",
+        "Choose Options",
+        choices = getCourses(
+          1,
+          "../data/Example-Curriculum.csv",
+          input$dropdownCourseCode
+        ),
+        selected = selectedCourseNames
+      )
+    } else if (input$dropdownYear == "Year 2") {
+      checkboxGroupInput(
+        "checkboxes2",
+        "Choose Options",
+        choices = getCourses(
+          2,
+          "../data/Example-Curriculum.csv",
+          input$dropdownCourseCode
+        ),
+        selected = selectedCourseNames
+      )
+    } else if (input$dropdownYear == "Year 3") {
+      checkboxGroupInput(
+        "checkboxes3",
+        "Choose Options",
+        choices = getCourses(
+          3,
+          "../data/Example-Curriculum.csv",
+          input$dropdownCourseCode
+        ),
+        selected = selectedCourseNames
+      )
+    } else if (input$dropdownYear == "Year 4") {
+      checkboxGroupInput(
+        "checkboxes4",
+        "Choose Options",
+        choices = getCourses(
+          4,
+          "../data/Example-Curriculum.csv",
+          input$dropdownCourseCode
+        ),
+        selected = selectedCourseNames
+      )
+    }
+  })
+
+  ############# COURSE PREDICTION SECTION ##################
 
   course_pred_data <- eventReactive(input$submit_button_pred_course_grad,{ df <-
     read.csv("..\\data\\student-data.csv")
@@ -323,59 +341,6 @@ server <- function(input, output, session) {
   df <- subset(df, HDR_CRS_PCT_GRD < 999)
   df_clean <- subset(df_clean, HDR_CRS_PCT_GRD < 999)
   df_clean})
-
-  # Create reactive course suggestion data for topic model
-  reactive_data <-
-    eventReactive(input$submit_button, {
-      ti <- input$text_input
-      sg <- input$sugYear
-
-      if (!is.null(ti) &
-          !is.null(sg) & nchar(ti) > 0) {
-        cat("Attempting to create Python environment.\n")
-        use_or_create_env()
-
-        df <-
-          read_csv(
-            "..\\data\\UBCO_Course_Calendar.csv",
-            locale = locale(encoding = "ISO-8859-1")
-          ) |>
-          filter(!is.na(`Course Description`))
-
-
-        cat("Staring doc sim.\n")
-        lsaDocSim.out <- lsaDocSim(ti, sg, df)
-        # cat("Doc sim finished.\n")
-        lsaDocSim.out
-      }
-    }, ignoreNULL = FALSE)
-
-  # Render the course recommendation UI
-  output$courseRecSim <- renderUI({
-    cat("Loading course suggestion data for display.\n")
-    data <- reactive_data()
-    cat("Data loaded.\n")
-    if (!is.null(data)) {
-      tagList(
-        tableOutput("table_view"),
-        checkboxInput(
-          "checkbox1rec",
-          paste(data$Course.Name[1], data$Course.Code[1]),
-          value = FALSE
-        ),
-        checkboxInput(
-          "checkbox2rec",
-          paste(data$Course.Name[2], data$Course.Code[2]),
-          value = FALSE
-        ),
-        checkboxInput(
-          "checkbox3rec",
-          paste(data$Course.Name[3], data$Course.Code[3]),
-          value = FALSE
-        )
-      )
-    }
-  })
 
   # Initialize a reactive value to control UI display
   values <- reactiveValues(ready = FALSE)
@@ -455,6 +420,61 @@ server <- function(input, output, session) {
   })
 
 
+
+  ############# COURSE RECOMMENDATION SECTION ##################
+
+  # Create reactive course suggestion data for topic model
+  reactive_data <-
+    eventReactive(input$submit_button, {
+      ti <- input$text_input
+      sg <- input$sugYear
+
+      if (!is.null(ti) &
+          !is.null(sg) & nchar(ti) > 0) {
+        cat("Attempting to create Python environment.\n")
+        use_or_create_env()
+
+        df <-
+          read_csv(
+            "..\\data\\UBCO_Course_Calendar.csv",
+            locale = locale(encoding = "ISO-8859-1")
+          ) |>
+          filter(!is.na(`Course Description`))
+
+
+        cat("Staring doc sim.\n")
+        lsaDocSim.out <- lsaDocSim(ti, sg, df)
+        # cat("Doc sim finished.\n")
+        lsaDocSim.out
+      }
+    }, ignoreNULL = FALSE)
+
+  # Render the course recommendation UI
+  output$courseRecSim <- renderUI({
+    cat("Loading course suggestion data for display.\n")
+    data <- reactive_data()
+    cat("Data loaded.\n")
+    if (!is.null(data)) {
+      tagList(
+        tableOutput("table_view"),
+        checkboxInput(
+          "checkbox1rec",
+          paste(data$Course.Name[1], data$Course.Code[1]),
+          value = FALSE
+        ),
+        checkboxInput(
+          "checkbox2rec",
+          paste(data$Course.Name[2], data$Course.Code[2]),
+          value = FALSE
+        ),
+        checkboxInput(
+          "checkbox3rec",
+          paste(data$Course.Name[3], data$Course.Code[3]),
+          value = FALSE
+        )
+      )
+    }
+  })
 
 
 
@@ -581,18 +601,9 @@ server <- function(input, output, session) {
   })
 
 
-
-
-  # We want each launch of the app to be fresh so delete all stored courses
-  # If accounts are implemented this will be removed and log ins will be tracked
-  onStop(function() {
-    dbDisconnect(db)
-    file.remove("my_courses_db2.sqlite")
-  })
-
-
 }
 
 
 # Launch shiny app
 shinyApp(ui, server)
+
